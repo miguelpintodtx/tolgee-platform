@@ -21,6 +21,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
+import java.util.concurrent.ConcurrentHashMap
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -153,7 +154,14 @@ class OpenaiApiService :
 
     config.extraBody?.forEach { (key, value) ->
       if (RESERVED_EXTRA_BODY_KEYS.contains(key)) {
-        extraBodyLogger.warn("Ignoring extraBody key '{}' on provider '{}' because it conflicts with a reserved request field", key, config.name)
+        val conflictId = "${config.name}|$key"
+        if (warnedExtraBodyConflicts.add(conflictId)) {
+          extraBodyLogger.warn(
+            "Ignoring extraBody key '{}' on provider '{}' because it conflicts with a reserved request field",
+            key,
+            config.name,
+          )
+        }
         return@forEach
       }
       body.putIfAbsent(key, value)
@@ -177,6 +185,8 @@ class OpenaiApiService :
         "reasoning_effort",
         "temperature",
       )
+
+    private val warnedExtraBodyConflicts = ConcurrentHashMap.newKeySet<String>()
 
     @Suppress("unused")
     class RequestBody(
