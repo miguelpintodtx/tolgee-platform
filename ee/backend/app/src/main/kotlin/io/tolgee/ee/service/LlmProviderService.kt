@@ -319,6 +319,10 @@ class LlmProviderService(
     provider: LlmProvider,
     dto: LlmProviderRequest,
   ) {
+    if (dto.type != LlmProviderType.OPENAI && dto.extraBody != null) {
+      throw BadRequestException("extraBody is only supported for OPENAI providers")
+    }
+
     provider.extraBody =
       if (dto.type == LlmProviderType.OPENAI) {
         dto.extraBody
