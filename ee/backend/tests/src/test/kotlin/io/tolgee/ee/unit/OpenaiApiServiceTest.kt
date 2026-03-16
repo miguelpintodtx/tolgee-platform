@@ -4,7 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.tolgee.configuration.tolgee.machineTranslation.LlmProviderInterface
 import io.tolgee.dtos.LlmParams
-import io.tolgee.ee.component.llm.AnthropicApiService
+import io.tolgee.ee.component.llm.OpenaiApiService
 import io.tolgee.model.enums.LlmProviderPriority
 import io.tolgee.model.enums.LlmProviderType
 import org.assertj.core.api.Assertions.assertThat
@@ -24,84 +24,106 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.URI
 
-class AnthropicApiServiceTest {
-  private lateinit var service: AnthropicApiService
+class OpenaiApiServiceTest {
+  private lateinit var service: OpenaiApiService
   private val objectMapper = jacksonObjectMapper()
   private var capturedRequestBody: String? = null
 
   @BeforeEach
   fun setUp() {
-    service = AnthropicApiService()
+    service = OpenaiApiService()
     capturedRequestBody = null
   }
 
   @Test
-  fun `includes output_config when shouldOutputJson and format is json_schema`() {
-    val config = createConfig(format = "json_schema")
-    val params = createParams(shouldOutputJson = true)
-    val restTemplate = createCapturingRestTemplate()
-
-    service.translate(params, config, restTemplate)
-
-    val bodyMap = objectMapper.readValue<Map<String, Any>>(capturedRequestBody!!)
-
-    assertThat(bodyMap).containsKey("output_config")
-    @Suppress("UNCHECKED_CAST")
-    val outputConfig = bodyMap["output_config"] as Map<String, Any>
-
-    @Suppress("UNCHECKED_CAST")
-    val format = outputConfig["format"] as Map<String, Any>
-    assertThat(format["type"]).isEqualTo("json_schema")
-    @Suppress("UNCHECKED_CAST")
-    val schema = format["schema"] as Map<String, Any>
-    assertThat(schema["type"]).isEqualTo("object")
-    assertThat(schema).containsKey("properties")
-    @Suppress("UNCHECKED_CAST")
-    val properties = schema["properties"] as Map<String, Any>
-    assertThat(properties).containsKey("output")
-    assertThat(properties).containsKey("contextDescription")
-    assertThat(schema["required"]).isEqualTo(listOf("output", "contextDescription"))
-    assertThat(schema["additionalProperties"]).isEqualTo(false)
-  }
-
-  @Test
-  fun `omits output_config when format is not json_schema`() {
-    val config = createConfig(format = null)
-    val params = createParams(shouldOutputJson = true)
-    val restTemplate = createCapturingRestTemplate()
-
-    service.translate(params, config, restTemplate)
-
-    val bodyMap = objectMapper.readValue<Map<String, Any>>(capturedRequestBody!!)
-
-    assertThat(bodyMap).doesNotContainKey("output_config")
-  }
-
-  @Test
-  fun `omits output_config when shouldOutputJson is false`() {
-    val config = createConfig(format = "json_schema")
+  fun `adds extraBody values at top level for openai`() {
+    val config =
+      createConfig(
+        type = LlmProviderType.OPENAI,
+        extraBody =
+          mapOf(
+            "chat_template_kwargs" to mapOf("enable_thinking" to false),
+          ),
+      )
     val params = createParams(shouldOutputJson = false)
-    val restTemplate = createCapturingRestTemplate()
 
-    service.translate(params, config, restTemplate)
+    service.translate(params, config, createCapturingRestTemplate())
 
     val bodyMap = objectMapper.readValue<Map<String, Any>>(capturedRequestBody!!)
-
-    assertThat(bodyMap).doesNotContainKey("output_config")
+    @Suppress("UNCHECKED_CAST")
+    val kwargs = bodyMap["chat_template_kwargs"] as Map<String, Any>
+    assertThat(kwargs).containsEntry("enable_thinking", false)
   }
 
-  private fun createConfig(format: String? = null): LlmProviderInterface {
+  @Test
+  fun `does not add extraBody when not configured`() {
+    val config = createConfig(type = LlmProviderType.OPENAI)
+    val params = createParams(shouldOutputJson = false)
+
+    service.translate(params, config, createCapturingRestTemplate())
+
+    val bodyMap = objectMapper.readValue<Map<String, Any>>(capturedRequestBody!!)
+    assertThat(bodyMap).doesNotContainKey("chat_template_kwargs")
+  }
+
+  @Test
+  fun `does not apply extraBody for azure openai`() {
+    val config =
+      createConfig(
+        type = LlmProviderType.OPENAI_AZURE,
+        extraBody = mapOf("chat_template_kwargs" to mapOf("enable_thinking" to false)),
+      )
+    val params = createParams(shouldOutputJson = false)
+
+    service.translate(params, config, createCapturingRestTemplate())
+
+    val bodyMap = objectMapper.readValue<Map<String, Any>>(capturedRequestBody!!)
+    assertThat(bodyMap).doesNotContainKey("chat_template_kwargs")
+  }
+
+  @Test
+  fun `ignores reserved extraBody keys`() {
+    val config =
+      createConfig(
+        type = LlmProviderType.OPENAI,
+        extraBody =
+          mapOf(
+            "model" to "overridden-model",
+            "messages" to listOf(mapOf("role" to "system", "content" to "nope")),
+            "max_completion_tokens" to 1,
+            "max_tokens" to 2,
+          ),
+        model = "expected-model",
+      )
+    val params = createParams(shouldOutputJson = false)
+
+    service.translate(params, config, createCapturingRestTemplate())
+
+    val bodyMap = objectMapper.readValue<Map<String, Any>>(capturedRequestBody!!)
+    assertThat(bodyMap["model"]).isEqualTo("expected-model")
+    assertThat(bodyMap["max_completion_tokens"]).isEqualTo(1000)
+    assertThat(bodyMap).doesNotContainKey("max_tokens")
+    @Suppress("UNCHECKED_CAST")
+    val messages = bodyMap["messages"] as List<Map<String, Any>>
+    assertThat(messages).hasSize(1)
+  }
+
+  private fun createConfig(
+    type: LlmProviderType,
+    extraBody: Map<String, Any>? = null,
+    model: String? = "gpt-4o-mini",
+  ): LlmProviderInterface {
     return object : LlmProviderInterface {
-      override var name = "test-anthropic"
-      override var type = LlmProviderType.ANTHROPIC
+      override var name = "test-openai"
+      override var type = type
       override var priority: LlmProviderPriority? = LlmProviderPriority.HIGH
       override var apiKey: String? = "test-key"
-      override var apiUrl: String? = "https://api.anthropic.com"
-      override var model: String? = "claude-sonnet-4-5-20250929"
-      override var format: String? = format
-      override var deployment: String? = null
+      override var apiUrl: String? = "https://api.openai.com"
+      override var model: String? = model
+      override var format: String? = null
+      override var deployment: String? = "test-deployment"
       override var reasoningEffort: String? = null
-      override var extraBody: Map<String, Any>? = null
+      override var extraBody: Map<String, Any>? = extraBody
       override var maxTokens: Long = 1000
       override var tokenPriceInCreditsInput: Double? = null
       override var tokenPriceInCreditsOutput: Double? = null
@@ -126,7 +148,7 @@ class AnthropicApiServiceTest {
   private fun createCapturingRestTemplate(): RestTemplate {
     val responseJson =
       """
-      {"content":[{"text":"result"}],"usage":{"input_tokens":10,"output_tokens":5}}
+      {"choices":[{"message":{"content":"result"}}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"prompt_tokens_details":{"cached_tokens":0},"completion_tokens_details":{"reasoning_tokens":0,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}}}
       """.trimIndent()
 
     val factory =

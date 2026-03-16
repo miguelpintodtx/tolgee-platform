@@ -472,6 +472,7 @@ declare namespace DataCy {
         "llm-machine-translation-customize" |
         "llm-provider-create-dialog-submit" |
         "llm-provider-create-dialog-update" |
+        "llm-provider-extra-body" |
         "llm-provider-form-priority-select" |
         "llm-provider-form-priority-select-item" |
         "llm-provider-form-select" |

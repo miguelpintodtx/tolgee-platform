@@ -84,6 +84,7 @@ class LlmPropertiesService(
     listEntry.model?.let { base.model = it }
     listEntry.deployment?.let { base.deployment = it }
     listEntry.reasoningEffort?.let { base.reasoningEffort = it }
+    listEntry.extraBody?.let { base.extraBody = it }
     listEntry.format?.let { base.format = it }
     listEntry.priority?.let { base.priority = it }
     listEntry.attempts?.let { base.attempts = it }

@@ -10,6 +10,7 @@ import io.tolgee.exceptions.LlmContentFilterException
 import io.tolgee.exceptions.LlmEmptyResponseException
 import io.tolgee.model.enums.LlmProviderType
 import io.tolgee.util.Logging
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.http.HttpEntity
@@ -20,6 +21,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
+import java.util.concurrent.ConcurrentHashMap
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -43,21 +45,22 @@ class OpenaiApiService :
     val messages = listOf(RequestMessage(role = "user", content = content))
 
     val requestBody =
-      RequestBody(
-        max_completion_tokens = config.maxTokens,
-        messages = messages,
-        response_format =
-          if (params.shouldOutputJson) {
-            when (config.format) {
-              "json_schema" -> RequestResponseFormat()
-              else -> null
-            }
-          } else {
-            null
-          },
-        model = config.model,
-        reasoning_effort = config.reasoningEffort,
-      )
+      linkedMapOf<String, Any>(
+        "max_completion_tokens" to config.maxTokens,
+        "stream" to false,
+        "messages" to messages,
+      ).apply {
+        config.model?.let {
+          put("model", it)
+        }
+        config.reasoningEffort?.let {
+          put("reasoning_effort", it)
+        }
+        if (params.shouldOutputJson && config.format == "json_schema") {
+          put("response_format", RequestResponseFormat())
+        }
+        mergeExtraBody(this, config)
+      }
 
     val request = HttpEntity(requestBody, headers)
 
@@ -141,10 +144,50 @@ class OpenaiApiService :
     return content
   }
 
+  private fun mergeExtraBody(
+    body: MutableMap<String, Any>,
+    config: LlmProviderInterface,
+  ) {
+    if (config.type != LlmProviderType.OPENAI) {
+      return
+    }
+
+    config.extraBody?.forEach { (key, value) ->
+      if (RESERVED_EXTRA_BODY_KEYS.contains(key)) {
+        val conflictId = "${config.name}|$key"
+        if (warnedExtraBodyConflicts.add(conflictId)) {
+          extraBodyLogger.warn(
+            "Ignoring extraBody key '{}' on provider '{}' because it conflicts with a reserved request field",
+            key,
+            config.name,
+          )
+        }
+        return@forEach
+      }
+      body.putIfAbsent(key, value)
+    }
+  }
+
   /**
    * Data structure for mapping the AzureCognitive JSON response objects.
    */
   companion object {
+    private val extraBodyLogger = LoggerFactory.getLogger(OpenaiApiService::class.java)
+
+    private val RESERVED_EXTRA_BODY_KEYS =
+      setOf(
+        "model",
+        "messages",
+        "max_tokens",
+        "max_completion_tokens",
+        "stream",
+        "response_format",
+        "reasoning_effort",
+        "temperature",
+      )
+
+    private val warnedExtraBodyConflicts = ConcurrentHashMap.newKeySet<String>()
+
     @Suppress("unused")
     class RequestBody(
       val max_completion_tokens: Long = 800,

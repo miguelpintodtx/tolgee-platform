@@ -14,6 +14,7 @@ import { useOrganization } from '../../../views/organizations/useOrganization';
 import { messageService } from 'tg.service/MessageService';
 import {
   getInitialValues,
+  prepareValuesForSubmit,
   getValidationSchema,
   LlmProviderModel,
   LlmProviderType,
@@ -59,7 +60,9 @@ export const LlmProviderEditDialog = ({ onClose, provider }: Props) => {
         onSubmit={(values) => {
           updateLoadable.mutate(
             {
-              content: { 'application/json': { ...values, type } },
+              content: {
+                'application/json': prepareValuesForSubmit(type, values),
+              },
               path: {
                 providerId: provider.id,
                 organizationId: organization!.id,

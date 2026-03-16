@@ -4037,6 +4037,7 @@ export interface components {
       apiKey?: string;
       apiUrl?: string;
       deployment?: string;
+      extraBody?: { [key: string]: unknown };
       format?: string;
       /** Format: int64 */
       id: number;
@@ -4052,6 +4053,7 @@ export interface components {
       apiKey?: string;
       apiUrl: string;
       deployment?: string;
+      extraBody?: { [key: string]: unknown };
       format?: string;
       keepAlive?: string;
       model?: string;

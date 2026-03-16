@@ -103,8 +103,10 @@ class LlmProviderService(
         keepAlive = dto.keepAlive,
         format = dto.format,
         reasoningEffort = dto.reasoningEffort,
+        extraBody = dto.extraBody,
         organization = organizationService.get(organizationId),
       )
+    applyExtraBody(provider, dto)
     llmProviderRepository.save(provider)
     return provider.toDto()
   }
@@ -126,6 +128,7 @@ class LlmProviderService(
     provider.keepAlive = dto.keepAlive
     provider.format = dto.format
     provider.reasoningEffort = dto.reasoningEffort
+    applyExtraBody(provider, dto)
     provider.organization = organizationService.get(organizationId)
     llmProviderRepository.save(provider)
     return provider.toDto()
@@ -310,6 +313,22 @@ class LlmProviderService(
       response = json,
       usage = PromptResult.Usage(inputTokens = 42, outputTokens = 21, cachedTokens = 1),
     )
+  }
+
+  private fun applyExtraBody(
+    provider: LlmProvider,
+    dto: LlmProviderRequest,
+  ) {
+    if (dto.type != LlmProviderType.OPENAI && dto.extraBody != null) {
+      throw BadRequestException("extraBody is only supported for OPENAI providers")
+    }
+
+    provider.extraBody =
+      if (dto.type == LlmProviderType.OPENAI) {
+        dto.extraBody
+      } else {
+        null
+      }
   }
 
   companion object {

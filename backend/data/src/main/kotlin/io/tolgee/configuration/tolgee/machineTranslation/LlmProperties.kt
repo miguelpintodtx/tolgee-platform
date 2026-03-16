@@ -130,6 +130,8 @@ class LlmProperties : MachineTranslationServiceProperties {
     override var maxTokens: Long = MAX_TOKENS_DEFAULT,
     @DocProperty(description = "ChatGPT reasoning effort")
     override var reasoningEffort: String? = null,
+    @DocProperty(description = "Extra top-level request body fields for OpenAI-compatible providers")
+    override var extraBody: Map<String, Any>? = null,
     @DocProperty(description = "Set to `json_schema` if the API supports JSON Schema")
     override var format: String? = null,
     @DocProperty(
@@ -158,6 +160,7 @@ class LlmProperties : MachineTranslationServiceProperties {
         deployment = deployment,
         format = format,
         reasoningEffort = reasoningEffort,
+        extraBody = extraBody,
         tokenPriceInCreditsInput = tokenPriceInCreditsInput,
         tokenPriceInCreditsOutput = tokenPriceInCreditsOutput,
         attempts = attempts,
@@ -192,6 +195,8 @@ class LlmProperties : MachineTranslationServiceProperties {
     var maxTokens: Long? = null,
     @DocProperty(description = "ChatGPT reasoning effort")
     var reasoningEffort: String? = null,
+    @DocProperty(description = "Extra top-level request body fields for OpenAI-compatible providers")
+    var extraBody: Map<String, Any>? = null,
     @DocProperty(description = "Set to `json_schema` if the API supports JSON Schema")
     var format: String? = null,
     @DocProperty(
@@ -219,6 +224,7 @@ class LlmProperties : MachineTranslationServiceProperties {
         deployment = deployment,
         maxTokens = maxTokens ?: LlmProvider.MAX_TOKENS_DEFAULT,
         reasoningEffort = reasoningEffort,
+        extraBody = extraBody,
         format = format,
         priority = priority,
         attempts = attempts,

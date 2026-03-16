@@ -1,5 +1,6 @@
 package io.tolgee.model
 
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType
 import io.tolgee.configuration.tolgee.machineTranslation.LlmProperties.LlmProvider.Companion.MAX_TOKENS_DEFAULT
 import io.tolgee.dtos.LlmProviderDto
 import io.tolgee.model.enums.LlmProviderPriority
@@ -15,6 +16,7 @@ import jakarta.persistence.Index
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.validation.constraints.NotBlank
+import org.hibernate.annotations.Type
 
 @Entity()
 @Table(
@@ -42,6 +44,9 @@ class LlmProvider(
   var keepAlive: String? = null,
   var format: String? = null,
   var reasoningEffort: String? = null,
+  @Type(JsonBinaryType::class)
+  @Column(name = "extra_body", columnDefinition = "jsonb")
+  var extraBody: Map<String, Any>? = null,
   @ManyToOne
   var organization: Organization,
 ) : AuditModel() {
@@ -57,6 +62,7 @@ class LlmProvider(
       deployment = deployment,
       format = format,
       reasoningEffort = reasoningEffort,
+      extraBody = extraBody,
       attempts = null,
       tokenPriceInCreditsInput = null,
       tokenPriceInCreditsOutput = null,

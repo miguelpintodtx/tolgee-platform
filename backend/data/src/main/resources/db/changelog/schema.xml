@@ -5196,4 +5196,5 @@
             <column name="max_char_limit" type="INTEGER"/>
         </addColumn>
     </changeSet>
+    <include file="20260316-2-add-openai-extra-body-to-llm-provider.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

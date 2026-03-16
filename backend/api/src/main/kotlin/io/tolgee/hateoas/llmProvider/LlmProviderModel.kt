@@ -17,4 +17,5 @@ open class LlmProviderModel(
   var deployment: String?,
   var format: String?,
   var reasoningEffort: String?,
+  var extraBody: Map<String, Any>?,
 ) : RepresentationModel<LlmProviderModel>()
