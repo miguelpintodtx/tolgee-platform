@@ -14,6 +14,7 @@ import { useOrganization } from '../../../views/organizations/useOrganization';
 import { messageService } from 'tg.service/MessageService';
 import {
   getInitialValues,
+  prepareValuesForSubmit,
   getValidationSchema,
   LlmProviderType,
 } from 'tg.ee.module/llm/OrganizationLLMProviders/LlmProviderEdit/llmProvidersConfig';
@@ -55,7 +56,9 @@ export const LlmProviderCreateDialog = ({ onClose }: Props) => {
         onSubmit={(values) => {
           createMutation.mutate(
             {
-              content: { 'application/json': { ...values, type } },
+              content: {
+                'application/json': prepareValuesForSubmit(type, values),
+              },
               path: {
                 organizationId: organization!.id,
               },

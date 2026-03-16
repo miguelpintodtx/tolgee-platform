@@ -92,6 +92,18 @@ export const LlmProviderForm = ({ type, onTypeChange }: Props) => {
         }
       })}
 
+      {type === 'OPENAI' && (
+        <TextField
+          name="extraBody"
+          label={t('llm_provider_form_openai_extra_body')}
+          multiline
+          minRows={3}
+          data-cy="llm-provider-extra-body"
+          placeholder={'{\n  "chat_template_kwargs": { "enable_thinking": false }\n}'}
+          helperText={t('llm_provider_form_openai_extra_body_hint')}
+        />
+      )}
+
       <Box
         gridColumn="1 / -1"
         height="1px"

@@ -5186,4 +5186,5 @@
             drop index concurrently if exists key_project_name_ns_not_deleted;
         </rollback>
     </changeSet>
+    <include file="20260316-2-add-openai-extra-body-to-llm-provider.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

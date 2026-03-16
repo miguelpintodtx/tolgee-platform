@@ -35,6 +35,9 @@ interface LlmProviderInterface {
   @DocProperty(description = "ChatGPT reasoning effort")
   var reasoningEffort: String?
 
+  @DocProperty(description = "Extra top-level request body fields for OpenAI-compatible providers")
+  var extraBody: Map<String, Any>?
+
   var maxTokens: Long
 
   // pricing

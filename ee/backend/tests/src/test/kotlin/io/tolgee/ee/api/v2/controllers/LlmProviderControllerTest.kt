@@ -81,6 +81,24 @@ class LlmProviderControllerTest : AuthorizedControllerTest() {
   }
 
   @Test
+  fun `round trips openai extra body`() {
+    performAuthPost(
+      "/v2/organizations/${testData.organization.self.id}/llm-providers",
+      LlmProviderRequest(
+        name = "custom-openai-provider",
+        type = LlmProviderType.OPENAI,
+        apiUrl = "mock",
+        extraBody =
+          mapOf(
+            "chat_template_kwargs" to mapOf("enable_thinking" to false),
+          ),
+      ),
+    ).andIsOk.andAssertThatJson {
+      node("extraBody.chat_template_kwargs.enable_thinking").isEqualTo(false)
+    }
+  }
+
+  @Test
   fun `denies llm provider creation to org member`() {
     this.userAccount = testData.organizationMember.self
     performAuthPost(

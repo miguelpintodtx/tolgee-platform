@@ -4,7 +4,13 @@ import * as Yup from 'yup';
 
 export type LlmProviderModel = components['schemas']['LlmProviderModel'];
 export type LlmProviderType = Exclude<LlmProviderModel['type'], 'TOLGEE'>;
-type LlmProviderRequest = components['schemas']['LlmProviderRequest'];
+export type LlmProviderRequest = components['schemas']['LlmProviderRequest'];
+export type LlmProviderFormValues = Omit<
+  LlmProviderRequest,
+  'extraBody'
+> & {
+  extraBody?: string;
+};
 
 export type ProviderOptions = {
   label: string;
@@ -112,6 +118,27 @@ export const getValidationSchema = (
     }
     fields[name] = field;
   });
+
+  if (type === 'OPENAI') {
+    fields.extraBody = Yup.string()
+      .nullable()
+      .test(
+        'valid-json',
+        t('llm_provider_form_openai_extra_body_invalid'),
+        (value) => {
+          if (!value?.trim()) {
+            return true;
+          }
+          try {
+            const parsed = JSON.parse(value);
+            return !!parsed && typeof parsed === 'object' && !Array.isArray(parsed);
+          } catch {
+            return false;
+          }
+        }
+      );
+  }
+
   return Yup.object({
     type: Yup.string(),
     ...fields,
@@ -123,7 +150,7 @@ export const getInitialValues = (
   t: TranslateFunction,
   existingData?: LlmProviderModel
 ) => {
-  const result: LlmProviderRequest = {
+  const result: LlmProviderFormValues = {
     type,
     name: '',
     apiUrl: '',
@@ -143,6 +170,37 @@ export const getInitialValues = (
         ? options.defaultValue
         : options.defaultValue ?? '';
     });
+    if (type === 'OPENAI') {
+      result.extraBody = '';
+    }
   }
+
+  if (type === 'OPENAI') {
+    result.extraBody = existingData?.type === type && existingData.extraBody
+      ? JSON.stringify(existingData.extraBody, null, 2)
+      : result.extraBody ?? '';
+  } else {
+    result.extraBody = undefined;
+  }
+
+  return result;
+};
+
+export const prepareValuesForSubmit = (
+  type: LlmProviderType,
+  values: LlmProviderFormValues
+): LlmProviderRequest => {
+  const result: LlmProviderRequest = {
+    ...values,
+    type,
+    extraBody: undefined,
+  };
+
+  if (type === 'OPENAI') {
+    result.extraBody = values.extraBody?.trim()
+      ? JSON.parse(values.extraBody)
+      : undefined;
+  }
+
   return result;
 };
